@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Kategori;
+use App\Models\Stok;
 
-class Product extends Model
+class Produk extends Model
 {
     protected $fillable = [
-        'ketegori_id',
+        'kategori_id',
         'nama_produk',
         'slug',
         'taste_note',
@@ -22,5 +23,11 @@ class Product extends Model
     public function kategori()
     {
         return $this->belongsTo(Kategori::class);
+    }
+
+    public function stok()
+    {
+        // Karena satu produk punya satu baris stok
+        return $this->hasOne(Stok::class, 'produk_id');
     }
 }

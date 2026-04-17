@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
 
             $table->date('tanggal');
-            $table->date('stok');
+            $table->integer('stok');
             $table->timestamps();
 
             $table->index(['product_id', 'tanggal']);
