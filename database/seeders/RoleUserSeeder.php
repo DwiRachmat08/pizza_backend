@@ -18,51 +18,44 @@ class RoleUserSeeder extends Seeder
      */
     public function run(): void
     {
-        // // Buat Role
-        // $admin = Role::create(['name' => 'Admin', 'slug' => 'admin']);
-        // $seller = Role::create(['name' => 'Seller', 'slug' => 'seller']);
-        // $pembeli = Role::create(['name' => 'Pembeli', 'slug' => 'pembeli']);
-
-        // // Buat Contoh User
-        // User::create([
-        //     'name' => 'Budi Seller',
-        //     'email' => 'seller@test.com',
-        //     'password' => bcrypt('password'),
-        //     'role_id' => $seller->id,
-        //     'lat' => -7.250445, // Contoh koordinat Surabaya
-        //     'long' => 112.768845
-        // ]);
-
         // 1. Seed Roles
-        $roles = ['admin', 'penjual', 'pembeli'];
+        $roles = ['admin', 'penjual', 'pembeli', 'mitra'];
         foreach ($roles as $roleName) {
-            Role::create(['name' => $roleName, 'slug' => $roleName]);
+            Role::firstOrCreate(['name' => $roleName, 'slug' => $roleName]);
         }
 
         // 2. Seed Users (1 per role)
         $roleAdmin = Role::where('slug', 'admin')->first();
         $rolePenjual = Role::where('slug', 'penjual')->first();
         $rolePembeli = Role::where('slug', 'pembeli')->first();
+        $roleMitra = Role::where('slug', 'mitra')->first();
 
-        $user_admin = User::create([
+        $user_admin = User::firstOrCreate([
             'name' => 'Admin Pizza',
             'email' => 'admin@pizza.com',
             'password' => Hash::make('password'),
             'role_id' => $roleAdmin->id
         ]);
 
-        User::create([
+        $user_penjual = User::firstOrCreate([
             'name' => 'Penjual Pizza',
             'email' => 'penjual@pizza.com',
             'password' => Hash::make('password'),
             'role_id' => $rolePenjual->id
         ]);
 
-        User::create([
+        User::firstOrCreate([
             'name' => 'Pembeli Pizza',
             'email' => 'pembeli@pizza.com',
             'password' => Hash::make('password'),
             'role_id' => $rolePembeli->id
+        ]);
+
+        User::firstOrCreate([
+            'name' => 'Mitra Pizza',
+            'email' => 'mitra@pizza.com',
+            'password' => Hash::make('password'),
+            'role_id' => $roleMitra->id
         ]);
 
         // 3. Seed Kategori & Produk
@@ -83,8 +76,8 @@ class RoleUserSeeder extends Seeder
         ];
 
         foreach ($kategoriData as $kat) {
-            // $kategori = Kategori::create(['nama_kategori' => $kat]);
-            $kategori = Kategori::create($kat);
+            // $kategori = Kategori::firstOrCreate(['nama_kategori' => $kat]);
+            $kategori = Kategori::firstOrCreate($kat);
             $nama_produk_a = 'Pizza ' . ucfirst($kat['nama_kategori']) . ' A';
             $slug_produk_a = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '_', $nama_produk_a)));
             $nama_produk_b = 'Pizza ' . ucfirst($kat['nama_kategori']) . ' B';
@@ -96,7 +89,7 @@ class RoleUserSeeder extends Seeder
                 $nama_produk = ($i == 1 ? $nama_produk_a : $nama_produk_b);
                 $slug_produk = ($i == 1 ? $slug_produk_a : $slug_produk_b);
 
-                $produk_create = Produk::create([
+                $produk_create = Produk::firstOrCreate([
                     'kategori_id'   => $kategori->id,
                     'nama_produk'   => $nama_produk,
                     'slug'          => $slug_produk,
@@ -107,8 +100,8 @@ class RoleUserSeeder extends Seeder
                     'harga'         => ($kat['slug'] == 'paket-sendiri') ? ($i == 1 ? 20000 : 22000) : ($i == 1 ? 35000 : 40000)
                 ]);
 
-                Stok::create([
-                    'user_id'   => $user_admin->id,
+                Stok::firstOrCreate([
+                    'seller_id'   => $user_penjual->id,
                     'produk_id' => $produk_create->id,
                     'tanggal'   => date('Y-m-d'),
                     'stok'      => rand(10, 50)

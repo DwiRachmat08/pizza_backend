@@ -28,8 +28,8 @@ class AuthController extends Controller
             'email'    => $request->email,
             'password' => Hash::make($request->password),
             'role_id'  => $request->role_id,
-            'lat'      => $request->lat,
-            'long'     => $request->long,
+            // 'lat'      => $request->lat,
+            // 'long'     => $request->long,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
