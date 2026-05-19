@@ -63,13 +63,13 @@ class RoleUserSeeder extends Seeder
         $kategoriData = [
             [
                 'nama_kategori' => 'Paket Sendirian',
-                'slug'          => 'paket-sendiri',
+                'slug'          => 'paket_sendiri',
                 'tipe_kategori' => '',
                 'prioritas'     => 1
             ],
             [
                 'nama_kategori' => 'Paket Rame-rame',
-                'slug'          => 'paket-ramean',
+                'slug'          => 'paket_ramean',
                 'tipe_kategori' => '',
                 'prioritas'     => 2
             ]

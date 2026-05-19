@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\AsetController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProdukController;
+use App\Http\Controllers\Api\SatuanController;
 use App\Http\Controllers\Api\StokController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -31,6 +33,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/produks/{id}', [ProdukController::class, 'update']);
 
         Route::post('/stoks', [StokController::class, 'store']);
+
+        // Route::get('/satuan', [SatuanController::class, 'index']);
+        // Route::get('/satuan/{id}', [SatuanController::class, 'show']);
+        // Route::post('/satuan', [SatuanController::class, 'store']);
+        // Route::put('/satuan/{id}', [SatuanController::class, 'update']);
+        Route::resource('/satuan', SatuanController::class);
+        Route::resource('/aset', AsetController::class);
     });
 });
 
