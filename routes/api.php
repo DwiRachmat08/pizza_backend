@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AsetController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProdukController;
+use App\Http\Controllers\Api\ResepController;
 use App\Http\Controllers\Api\SatuanController;
 use App\Http\Controllers\Api\StokController;
 use App\Http\Controllers\Api\UserController;
@@ -34,12 +35,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/stoks', [StokController::class, 'store']);
 
-        // Route::get('/satuan', [SatuanController::class, 'index']);
-        // Route::get('/satuan/{id}', [SatuanController::class, 'show']);
-        // Route::post('/satuan', [SatuanController::class, 'store']);
-        // Route::put('/satuan/{id}', [SatuanController::class, 'update']);
         Route::resource('/satuan', SatuanController::class);
         Route::resource('/aset', AsetController::class);
+
+        Route::get('/resep/produk/{id}', [ResepController::class, 'getResepByIdProduk']);
+        Route::post('/resep/simpanResepBatch', [ResepController::class, 'storeBatch']);
+        Route::post('/resep/updateResep/{id}', [ResepController::class, 'update']);
+        Route::delete('/resep/hapusResep/{id}', [ResepController::class, 'destroy']);
     });
 });
 

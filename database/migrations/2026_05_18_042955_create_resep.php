@@ -16,7 +16,8 @@ return new class extends Migration
             $table->integer('produk_id')->constrained('produk')->onDelete('cascade');
             $table->integer('aset_id')->constrained('aset')->onDelete('cascade');
             $table->integer('satuan_id')->constrained('satuan')->onDelete('cascade');
-            $table->decimal('qty');
+            $table->decimal('qty', 12, 2);
+            $table->decimal('harga', 12, 2);
             $table->text('keterangan')->nullable();
             $table->timestamps();
         });

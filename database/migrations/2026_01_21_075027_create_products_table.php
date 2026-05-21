@@ -19,9 +19,9 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('taste_note')->nullable();
             $table->text('deskripsi')->nullable();
-            $table->decimal('hpp');
-            $table->decimal('margin');
-            $table->decimal('harga');
+            $table->decimal('hpp', 12, 2);
+            $table->decimal('margin', 12, 2);
+            $table->decimal('harga', 12, 2);
 
             $table->boolean('is_available')->default(true);
             $table->timestamps();

@@ -14,7 +14,7 @@ class AsetController extends Controller
     public function index()
     {
         // with(['kategori', 'stok']) itu Eager Loading biar gak lemot
-        $bahanbakus = Aset::with('satuan')->where(['aktif' => true])->orderBy('nama', 'asc')->get();
+        $bahanbakus = Aset::with('satuan', 'satuan_ecer')->where(['aktif' => true])->orderBy('nama', 'asc')->get();
 
         return response()->json([
             'success' => true,
@@ -32,7 +32,10 @@ class AsetController extends Controller
             'nama' => 'required|string|max:100',
             'qty' => 'required|numeric',
             'satuan_id' => 'required|numeric',
-            'harga' => 'required|numeric'
+            'harga' => 'required|numeric',
+            'qty_ecer' => 'required|numeric',
+            'satuan_ecer_id' => 'required|numeric',
+            'harga_ecer' => 'required|numeric'
         ]);
 
         // Jika validasi gagal, kembalikan response error 422
@@ -131,22 +134,22 @@ class AsetController extends Controller
         }
 
         // Validasi, abaikan nama_satuan milik ID ini sendiri
-        $validator = Validator::make($request->all(), [
-            'kategori_aset_id' => 'required|numeric',
-            'merk' => 'required|string|max:100',
-            'nama' => 'required|string|max:100',
-            'qty' => 'required|numeric',
-            'satuan_id' => 'required|numeric',
-            'harga' => 'required|numeric'
-        ]);
+        // $validator = Validator::make($request->all(), [
+        //     'kategori_aset_id' => 'required|numeric',
+        //     'merk' => 'required|string|max:100',
+        //     'nama' => 'required|string|max:100',
+        //     'qty' => 'required|numeric',
+        //     'satuan_id' => 'required|numeric',
+        //     'harga' => 'required|numeric'
+        // ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal',
-                'errors'  => $validator->errors()
-            ], 422);
-        }
+        // if ($validator->fails()) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Validasi gagal',
+        //         'errors'  => $validator->errors()
+        //     ], 422);
+        // }
 
         // Jalankan update
         $aset->update($request->all());
