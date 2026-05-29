@@ -13,10 +13,15 @@ use Illuminate\Support\Facades\Validator;
 
 class SatuanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // with(['kategori', 'stok']) itu Eager Loading biar gak lemot
-        $satuans = Satuan::where(['aktif' => true])->orderBy('id', 'asc')->get();
+        $satuans = Satuan::query()
+            ->when($request->has('aktif'), function ($query) use ($request) {
+                return $query->where('aktif', $request->boolean('aktif'));
+            })
+            ->orderBy('nama', 'asc')
+            ->get();
 
         return response()->json([
             'success' => true,
