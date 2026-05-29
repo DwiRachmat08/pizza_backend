@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('resep', function (Blueprint $table) {
             $table->id();
-            $table->integer('produk_id')->constrained('produk')->onDelete('cascade');
+            $table->integer('produk_id')->constrained('produks')->onDelete('cascade');
             $table->integer('aset_id')->constrained('aset')->onDelete('cascade');
             $table->integer('satuan_id')->constrained('satuan')->onDelete('cascade');
             $table->decimal('qty', 12, 2);

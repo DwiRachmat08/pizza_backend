@@ -8,7 +8,7 @@ use App\Models\Produk;
 class Kategori extends Model
 {
     protected $table = 'kategori';
-    protected $fillable = ['nama_kategori', 'slug', 'tipe_kategori', 'prioritas'];
+    protected $fillable = ['nama_kategori', 'slug', 'tipe_kategori', 'prioritas', 'aktif'];
 
     public function produks()
     {

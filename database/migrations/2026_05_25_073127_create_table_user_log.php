@@ -11,13 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('kategori', function (Blueprint $table) {
+        Schema::create('user_log', function (Blueprint $table) {
             $table->id();
-            $table->string('nama_kategori')->unique();
-            $table->string('slug')->unique();
-            $table->string('tipe_kategori');
-            $table->integer('prioritas');
-            $table->boolean('aktif')->default(true);
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->text('ip_address')->nullable();
+            $table->text('aktivitas');
+            $table->json('perubahan')->nullable();
             $table->timestamps();
         });
     }
@@ -27,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('categories');
+        Schema::dropIfExists('user_log');
     }
 };

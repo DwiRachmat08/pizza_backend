@@ -3,8 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Aset;
 use App\Models\Stok;
+use App\Models\StokDetail;
+use App\Models\User;
+use App\Models\UserLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class StokController extends Controller
@@ -24,6 +29,7 @@ class StokController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'gerobak_id' => 'required|integer',
             'seller_id' => 'required|integer',
             'produk_id' => 'required|integer',
             'tanggal'   => 'required',
@@ -31,7 +37,11 @@ class StokController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
         }
 
         $stok = Stok::create($request->all());
@@ -41,5 +51,104 @@ class StokController extends Controller
             'message' => 'Stok berhasil ditambahkan',
             'data'    => $stok
         ], 201);
+    }
+
+    public function simpanBatch(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'gerobak_id'                => 'required|exists:aset,id',
+            'seller_id'                 => 'required|exists:users,id',
+            'tanggal'                   => 'required|date_format:Y-m-d',
+            'produk'                    => 'required|array|min:1',
+            'produk.*.produk_id'        => 'required|exists:produks,id',
+            'produk.*.stok'             => 'required|numeric',
+        ], [
+            'gerobak_id.required'        => 'Gerobak tidak boleh kosong.',
+            'gerobak_id.exists'          => 'Gerobak yang dipilih tidak valid.',
+            'seller_id.required'         => 'Penjual tidak boleh kosong.',
+            'seller_id.exists'           => 'Penjual yang dipilih tidak valid.',
+            'produk.required'            => 'Daftar Produk tidak boleh kosong.',
+            'produk.*.produk_id.exists'  => 'Produk yang dipilih tidak valid.',
+            'produk.*.stok.exists'       => 'Jumlah stok tidak valid.'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($request) {
+                $waktuSekarang = now();
+                $gerobakModel = Aset::find($request->gerobak_id);
+                $sellerModel = User::find($request->seller_id);
+
+                $simpanStok = Stok::create([
+                    'gerobak_id'    => $request->gerobak_id,
+                    'seller_id'     => $request->seller_id,
+                    'tanggal'       => date('Y-m-d', strtotime($request->tanggal))
+                ]);
+
+                $insertBatch = [];
+                foreach ($request->produk as $p) {
+                    $insertBatch[] = [
+                        'stok_id'   => $simpanStok->id,
+                        'produk_id' => $p->produk_id,
+                        'stok'      => $p->stok,
+                        'created_at'    => $waktuSekarang,
+                        'updated_at'    => $waktuSekarang
+                    ];
+                }
+
+                StokDetail::insert($insertBatch);
+                UserLog::simpan("Menambah stok pada gerobak {$gerobakModel->nama} untuk seller {$sellerModel->name}");
+            });
+
+            return response()->json([
+                'success'  => true,
+                'message' => 'Data stok berhasil disimpan!'
+            ], 201);
+        } catch (\Exception $th) {
+            return response()->json([
+                'success'  => false,
+                'message' => 'Gagal menyimpan stok. Transaksi dibatalkan.',
+                'error'   => $th->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $stok = Stok::find($id);
+
+        if (!$stok) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stok tidak ditemukan'
+            ], 404);
+        }
+
+        try {
+            DB::transaction(function () use ($stok, $request) {
+                $stokLama = $stok;
+                $stok->update($request->all());
+                UserLog::simpan("Mengubah data stok", ["semula" => $stokLama, "menjadi" => $stok]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stok berhasil diupdate',
+                'data'    => $stok
+            ]);
+        } catch (\Exception $th) {
+            return response()->json([
+                'success'  => false,
+                'message' => 'Gagal update stok. Transaksi dibatalkan.',
+                'error'   => $th->getMessage()
+            ], 500);
+        }
     }
 }

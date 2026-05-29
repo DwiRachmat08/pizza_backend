@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Aset;
 use App\Models\Pembelian;
+use App\Models\UserLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -14,12 +15,12 @@ class AsetController extends Controller
     public function index()
     {
         // with(['kategori', 'stok']) itu Eager Loading biar gak lemot
-        $bahanbakus = Aset::with('satuan', 'satuan_ecer')->where(['aktif' => true])->orderBy('nama', 'asc')->get();
+        $asets = Aset::with('satuan', 'satuan_ecer')->where(['aktif' => true])->orderBy('nama', 'asc')->get();
 
         return response()->json([
             'success' => true,
             'message' => 'Daftar Data Aset',
-            'data'    => $bahanbakus
+            'data'    => $asets
         ], 200);
     }
 
@@ -78,6 +79,7 @@ class AsetController extends Controller
                     'harga' => $request->harga,
                     'keterangan' => $request->keterangan
                 ]);
+                UserLog::simpan("Menambah/membeli aset baru", ["nama" => $simpanAset->nama, "merk" => $simpanAset->merk, "harga" => $simpanAset->harga]);
 
                 return [
                     'aset' => $simpanAset,
@@ -97,7 +99,7 @@ class AsetController extends Controller
         } catch (\Exception $th) {
             //throw $th;
             return response()->json([
-                'status'  => 'error',
+                'success'  => false,
                 'message' => 'Gagal memproses data aset. Transaksi dibatalkan secara otomatis.',
                 'error'   => $th->getMessage()
             ], 500);
@@ -134,30 +136,63 @@ class AsetController extends Controller
         }
 
         // Validasi, abaikan nama_satuan milik ID ini sendiri
-        // $validator = Validator::make($request->all(), [
-        //     'kategori_aset_id' => 'required|numeric',
-        //     'merk' => 'required|string|max:100',
-        //     'nama' => 'required|string|max:100',
-        //     'qty' => 'required|numeric',
-        //     'satuan_id' => 'required|numeric',
-        //     'harga' => 'required|numeric'
-        // ]);
+        $validator = Validator::make($request->all(), [
+            'kategori_aset_id' => 'sometimes|required|numeric',
+            'merk' => 'sometimes|required|string|max:100',
+            'nama' => 'sometimes|required|string|max:100',
+            'qty' => 'sometimes|required|numeric',
+            'satuan_id' => 'sometimes|required|numeric',
+            'harga' => 'sometimes|required|numeric'
+        ]);
 
-        // if ($validator->fails()) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Validasi gagal',
-        //         'errors'  => $validator->errors()
-        //     ], 422);
-        // }
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
 
-        // Jalankan update
-        $aset->update($request->all());
+        try {
+            DB::transaction(function () use ($request, $aset) {
+                $asetLama = $aset;
+
+                $dataUpdate = $request->all();
+                if ($request->has('aktif')) {
+                    $dataUpdate['aktif'] = $request->boolean('aktif');
+                }
+
+                // Jalankan update
+                $aset->update($dataUpdate);
+
+                UserLog::simpan("Mengubah data aset", [
+                    "Semula" => $asetLama,
+                    "menjadi" => $aset
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Aset berhasil diupdate',
+                'data'    => $aset
+            ], 200);
+        } catch (\Exception $th) {
+            return response()->json([
+                'success'  => false,
+                'message' => 'Gagal update data aset. Transaksi dibatalkan secara otomatis.',
+                'error'   => $th->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAsetByKategoriAset($id)
+    {
+        $asets = Aset::with('satuan', 'satuan_ecer')->where(['aktif' => true, 'kategori_aset_id' => $id])->orderBy('nama', 'asc')->get();
 
         return response()->json([
             'success' => true,
-            'message' => 'Data Aset berhasil diupdate',
-            'data'    => $aset
+            'message' => 'Daftar Data Aset',
+            'data'    => $asets
         ], 200);
     }
 }

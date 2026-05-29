@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
-use App\Models\Produk;
 use App\Models\Aset;
 
-class Stok extends Model
+class LokasiSeller extends Model
 {
-    protected $fillable = ['gerobak_id', 'seller_id', 'tanggal'];
+    protected $table = 'lokasi_seller';
+    protected $fillable = ['gerobak_id', 'seller_id', 'provinsi_id', 'kota_id', 'kecamatan_id', 'kelurahan_id'];
 
     public function users()
     {

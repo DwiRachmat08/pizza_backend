@@ -8,7 +8,7 @@ use App\Models\Satuan;
 class Aset extends Model
 {
     protected $table = 'aset';
-    protected $fillable = ['kategori_aset_id', 'nama', 'merk', 'qty', 'satuan_id', 'harga', 'qty_ecer', 'satuan_ecer_id', 'harga_ecer', 'keterangan'];
+    protected $fillable = ['kategori_aset_id', 'nama', 'merk', 'qty', 'satuan_id', 'harga', 'qty_ecer', 'satuan_ecer_id', 'harga_ecer', 'keterangan', 'aktif'];
 
     public function satuan()
     {

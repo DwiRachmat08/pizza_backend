@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Produk;
+use App\Models\UserLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class ProdukController extends Controller
@@ -61,16 +63,30 @@ class ProdukController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
         }
 
-        $produk = Produk::create($request->all());
+        try {
+            DB::transaction(function () use ($request) {
+                $produk = Produk::create($request->all());
+                UserLog::simpan("Menambahkan Produk baru {$produk->nama}", $produk);
+            });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Produk berhasil ditambahkan',
-            'data'    => $produk
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Produk berhasil ditambahkan'
+            ], 201);
+        } catch (\Exception $th) {
+            return response()->json([
+                'success'  => false,
+                'message' => 'Gagal tambah Produk. Transaksi dibatalkan secara otomatis.',
+                'error'   => $th->getMessage()
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
@@ -78,15 +94,49 @@ class ProdukController extends Controller
         $produk = Produk::find($id);
 
         if (!$produk) {
-            return response()->json(['message' => 'Produk tidak ditemukan'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Produk tidak ditemukan'
+            ], 404);
         }
 
-        $produk->update($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Produk berhasil diupdate',
-            'data'    => $produk
+        $validator = Validator::make($request->all(), [
+            'kategori_id' => 'sometimes|required|integer',
+            'nama_produk' => 'sometimes|required|string|max:255',
+            'slug'        => 'sometimes|required|string|max:255',
+            'taste_note'  => 'nullable|string',
+            'deskripsi'   => 'nullable|string',
+            'hpp'         => 'sometimes|required|integer',
+            'margin'      => 'sometimes|required|integer',
+            'harga'       => 'sometimes|required|numeric',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($produk, $request) {
+                $produkLama = $produk;
+                $produk->update($request->all());
+                UserLog::simpan("Mengubah Produk {$produk->nama}", ["semula" => $produkLama, "menjadi" => $produk]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Produk berhasil diupdate',
+                'data'    => $produk
+            ]);
+        } catch (\Exception $th) {
+            return response()->json([
+                'success'  => false,
+                'message' => 'Gagal update Produk. Transaksi dibatalkan secara otomatis.',
+                'error'   => $th->getMessage()
+            ], 500);
+        }
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Produk;
 use App\Models\Resep;
+use App\Models\UserLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -19,7 +20,7 @@ class ResepController extends Controller
         // Jika id_produk tidak terdaftar di database
         if (!$produk) {
             return response()->json([
-                'status'  => 'error',
+                'success'  => false,
                 'message' => 'Produk tidak ditemukan.'
             ], 404);
         }
@@ -48,7 +49,11 @@ class ResepController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
         }
 
         try {
@@ -88,6 +93,8 @@ class ResepController extends Controller
                 $produkModel->hpp = $hpp;
                 $produkModel->margin = $hargaProduk - $hpp;
                 $produkModel->save();
+
+                UserLog::simpan("Menambah resep untuk produk {$produkModel->nama}");
             });
 
             return response()->json([
@@ -126,6 +133,8 @@ class ResepController extends Controller
                 $produkModel->hpp = $hpp;
                 $produkModel->margin = $hargaProduk - $hpp;
                 $produkModel->save();
+
+                UserLog::simpan("Mengubah data resep produk {$produkModel->nama}");
             });
 
             return response()->json([
@@ -166,6 +175,8 @@ class ResepController extends Controller
                 $produkModel->hpp = $hpp;
                 $produkModel->margin = $hargaProduk - $hpp;
                 $produkModel->save();
+
+                UserLog::simpan("Hapus resep untuk produk {$produkModel->nama}");
             });
 
             $resepNewModel = Resep::where(['produk_id' => $produkModel->id])->get();
