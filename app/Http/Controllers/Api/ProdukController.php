@@ -17,9 +17,14 @@ class ProdukController extends Controller
     public function index()
     {
         // with(['kategori', 'stok']) itu Eager Loading biar gak lemot
-        $produks = Produk::with(['kategori', 'stok' => function ($query) {
-            $query->whereDate('created_at', date('Y-m-d'));
-        }])->get();
+        $produks = Produk::with([
+            'kategori',
+            'stokDetail' => function ($query) {
+                $query->whereHas('stok', function ($q) {
+                    $q->whereDate('tanggal', date('Y-m-d'));
+                });
+            }
+        ])->get();
 
         return response()->json([
             'success' => true,
@@ -59,7 +64,7 @@ class ProdukController extends Controller
             'deskripsi'   => 'nullable|string',
             'hpp'         => 'required|integer',
             'margin'      => 'required|integer',
-            'harga'       => 'required|numeric',
+            'harga'       => 'required|numeric'
         ]);
 
         if ($validator->fails()) {

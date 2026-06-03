@@ -32,6 +32,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         // load all user penjual
         Route::get('/user/penjual', [UserController::class, 'getPenjual']);
+        Route::post('/user', [UserController::class, 'store']);
+        Route::put('/user/{id}', [UserController::class, 'update']);
 
         // produk
         Route::post('/produks', [ProdukController::class, 'store']);
@@ -57,12 +59,15 @@ Route::middleware('auth:sanctum')->group(function () {
         // resep
         Route::get('/resep/produk/{id}', [ResepController::class, 'getResepByIdProduk']);
         Route::post('/resep/simpanResepBatch', [ResepController::class, 'storeBatch']);
-        Route::post('/resep/updateResep/{id}', [ResepController::class, 'update']);
+        Route::put('/resep/updateResep/{id}', [ResepController::class, 'update']);
         Route::delete('/resep/hapusResep/{id}', [ResepController::class, 'destroy']);
 
         // lokasi seller
         Route::get('/lokasiSeller', [LokasiSellerController::class, 'index']);
         Route::get('/lokasiSeller/getSellerByLokasiId/{id}', [LokasiSellerController::class, 'getSellerByLokasiId']);
+        Route::get('/lokasiSeller/show/{id}', [LokasiSellerController::class, 'show']);
+        Route::put('/lokasiSeller/updateLokasiSeller/{id}', [LokasiSellerController::class, 'update']);
+        Route::delete('/lokasiSeller/delete/{id}', [LokasiSellerController::class, 'destroy']);
     });
 });
 

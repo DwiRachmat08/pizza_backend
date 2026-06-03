@@ -22,6 +22,9 @@ return new class extends Migration
             $table->decimal('lat', 10, 8)->nullable();
             $table->decimal('long', 11, 8)->nullable();
 
+            $table->string('notelp')->nullable();
+            $table->boolean('aktif')->default(true);
+
             $table->rememberToken();
             $table->timestamps();
 

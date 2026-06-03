@@ -18,6 +18,7 @@ class Produk extends Model
         'hpp',
         'margin',
         'harga',
+        'gambar',
         'is_available'
     ];
 
@@ -26,9 +27,14 @@ class Produk extends Model
         return $this->belongsTo(Kategori::class);
     }
 
-    public function stok()
+    // public function stok()
+    // {
+    //     return $this->hasMany(Stok::class, 'produk_id');
+    // }
+
+    public function stokDetail()
     {
-        return $this->hasMany(Stok::class, 'produk_id');
+        return $this->hasMany(StokDetail::class, 'produk_id', 'id');
     }
 
     public function resep()

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->decimal('hpp', 12, 2);
             $table->decimal('margin', 12, 2);
             $table->decimal('harga', 12, 2);
+            $table->text('gambar')->nullable();
 
             $table->boolean('is_available')->default(true);
             $table->timestamps();

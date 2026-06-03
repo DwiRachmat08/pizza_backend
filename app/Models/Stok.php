@@ -20,4 +20,9 @@ class Stok extends Model
     {
         return $this->belongsTo(Aset::class, 'gerobak_id');
     }
+
+    public function detail()
+    {
+        return $this->hasMany(StokDetail::class, 'stok_id');
+    }
 }

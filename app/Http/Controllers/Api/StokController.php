@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Aset;
+use App\Models\LokasiSeller;
 use App\Models\Stok;
 use App\Models\StokDetail;
 use App\Models\User;
@@ -17,7 +18,7 @@ class StokController extends Controller
     public function index()
     {
         // with(['kategori', 'stok']) itu Eager Loading biar gak lemot
-        $stoks = Stok::with(['users', 'produk'])->get();
+        $stoks = Stok::with(['users', 'gerobak'])->get();
 
         return response()->json([
             'success' => true,
@@ -59,6 +60,7 @@ class StokController extends Controller
             'gerobak_id'                => 'required|exists:aset,id',
             'seller_id'                 => 'required|exists:users,id',
             'tanggal'                   => 'required|date_format:Y-m-d',
+            'lokasi'                    => 'required|array|min:1',
             'produk'                    => 'required|array|min:1',
             'produk.*.produk_id'        => 'required|exists:produks,id',
             'produk.*.stok'             => 'required|numeric',
@@ -67,6 +69,7 @@ class StokController extends Controller
             'gerobak_id.exists'          => 'Gerobak yang dipilih tidak valid.',
             'seller_id.required'         => 'Penjual tidak boleh kosong.',
             'seller_id.exists'           => 'Penjual yang dipilih tidak valid.',
+            'lokasi.required'            => 'Lokasi Seller tidak boleh kosong.',
             'produk.required'            => 'Daftar Produk tidak boleh kosong.',
             'produk.*.produk_id.exists'  => 'Produk yang dipilih tidak valid.',
             'produk.*.stok.exists'       => 'Jumlah stok tidak valid.'
@@ -104,7 +107,24 @@ class StokController extends Controller
                 }
 
                 StokDetail::insert($insertBatch);
-                UserLog::simpan("Menambah stok pada gerobak {$gerobakModel->nama} untuk seller {$sellerModel->name}");
+
+                $simpanLokasiSellerBatch = [];
+                foreach ($request->lokasi as $l) {
+                    $simpanLokasiSellerBatch[] = [
+                        'gerobak_id'        => $request->gerobak_id,
+                        'seller_id'         => $request->seller_id,
+                        'tanggal'           => date('Y-m-d', strtotime($request->tanggal)),
+                        'provinsi_id'       => $l->provinsi_id ?? null,
+                        'kota_id'           => $l->kota_id ?? null,
+                        'kecamatan_id'      => $l->kecamatan_id ?? null,
+                        'kelurahan_id'      => $l->kelurahan_id ?? null,
+                        'created_at'        => $waktuSekarang,
+                        'updated_at'        => $waktuSekarang
+                    ];
+                }
+
+                LokasiSeller::insert($simpanLokasiSellerBatch);
+                UserLog::simpan("Menambah stok dan lokasi pada gerobak {$gerobakModel->nama} untuk seller {$sellerModel->name}");
             });
 
             return response()->json([

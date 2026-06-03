@@ -19,6 +19,7 @@ return new class extends Migration
             $table->integer('kota_id')->nullable();
             $table->integer('kecamatan_id')->nullable();
             $table->integer('kelurahan_id')->nullable();
+            $table->date('tanggal');
             $table->timestamps();
         });
     }
