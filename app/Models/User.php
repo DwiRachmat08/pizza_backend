@@ -25,7 +25,10 @@ class User extends Authenticatable
         'password',
         'role_id',
         'lat',
-        'long'
+        'long',
+        'notelp',
+        'aktif',
+        'status_lapak'
     ];
 
     /**

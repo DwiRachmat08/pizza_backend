@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('lokasi_seller', function (Blueprint $table) {
             $table->id();
             $table->foreignId('gerobak_id')->constrained('aset')->onDelete('cascade');
-            $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('penjual_id')->constrained('users')->onDelete('cascade');
             $table->integer('provinsi_id')->nullable();
             $table->integer('kota_id')->nullable();
             $table->integer('kecamatan_id')->nullable();

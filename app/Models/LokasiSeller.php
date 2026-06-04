@@ -9,11 +9,11 @@ use App\Models\Aset;
 class LokasiSeller extends Model
 {
     protected $table = 'lokasi_seller';
-    protected $fillable = ['gerobak_id', 'seller_id', 'provinsi_id', 'kota_id', 'kecamatan_id', 'kelurahan_id'];
+    protected $fillable = ['gerobak_id', 'penjual_id', 'provinsi_id', 'kota_id', 'kecamatan_id', 'kelurahan_id'];
 
     public function users()
     {
-        return $this->belongsTo(User::class, 'seller_id');
+        return $this->belongsTo(User::class, 'penjual_id');
     }
 
     public function gerobak()

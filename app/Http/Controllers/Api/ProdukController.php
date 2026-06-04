@@ -127,7 +127,13 @@ class ProdukController extends Controller
         try {
             DB::transaction(function () use ($produk, $request) {
                 $produkLama = $produk;
-                $produk->update($request->all());
+
+                $dataUpdate = $request->all();
+                if ($request->has('aktif')) {
+                    $dataUpdate['aktif'] = $request->boolean('aktif');
+                }
+
+                $produk->update($dataUpdate);
                 UserLog::simpan("Mengubah Produk {$produk->nama}", ["semula" => $produkLama, "menjadi" => $produk]);
             });
 

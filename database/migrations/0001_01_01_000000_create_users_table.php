@@ -24,6 +24,7 @@ return new class extends Migration
 
             $table->string('notelp')->nullable();
             $table->boolean('aktif')->default(true);
+            $table->boolean('status_lapak')->default(false);
 
             $table->rememberToken();
             $table->timestamps();

@@ -31,7 +31,7 @@ class StokController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'gerobak_id' => 'required|integer',
-            'seller_id' => 'required|integer',
+            'penjual_id' => 'required|integer',
             'produk_id' => 'required|integer',
             'tanggal'   => 'required',
             'stok'      => 'required|numeric',
@@ -58,7 +58,7 @@ class StokController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'gerobak_id'                => 'required|exists:aset,id',
-            'seller_id'                 => 'required|exists:users,id',
+            'penjual_id'                 => 'required|exists:users,id',
             'tanggal'                   => 'required|date_format:Y-m-d',
             'lokasi'                    => 'required|array|min:1',
             'produk'                    => 'required|array|min:1',
@@ -67,8 +67,8 @@ class StokController extends Controller
         ], [
             'gerobak_id.required'        => 'Gerobak tidak boleh kosong.',
             'gerobak_id.exists'          => 'Gerobak yang dipilih tidak valid.',
-            'seller_id.required'         => 'Penjual tidak boleh kosong.',
-            'seller_id.exists'           => 'Penjual yang dipilih tidak valid.',
+            'penjual_id.required'         => 'Penjual tidak boleh kosong.',
+            'penjual_id.exists'           => 'Penjual yang dipilih tidak valid.',
             'lokasi.required'            => 'Lokasi Seller tidak boleh kosong.',
             'produk.required'            => 'Daftar Produk tidak boleh kosong.',
             'produk.*.produk_id.exists'  => 'Produk yang dipilih tidak valid.',
@@ -87,11 +87,11 @@ class StokController extends Controller
             DB::transaction(function () use ($request) {
                 $waktuSekarang = now();
                 $gerobakModel = Aset::find($request->gerobak_id);
-                $sellerModel = User::find($request->seller_id);
+                $sellerModel = User::find($request->penjual_id);
 
                 $simpanStok = Stok::create([
                     'gerobak_id'    => $request->gerobak_id,
-                    'seller_id'     => $request->seller_id,
+                    'penjual_id'     => $request->penjual_id,
                     'tanggal'       => date('Y-m-d', strtotime($request->tanggal))
                 ]);
 
@@ -112,7 +112,7 @@ class StokController extends Controller
                 foreach ($request->lokasi as $l) {
                     $simpanLokasiSellerBatch[] = [
                         'gerobak_id'        => $request->gerobak_id,
-                        'seller_id'         => $request->seller_id,
+                        'penjual_id'         => $request->penjual_id,
                         'tanggal'           => date('Y-m-d', strtotime($request->tanggal)),
                         'provinsi_id'       => $l->provinsi_id ?? null,
                         'kota_id'           => $l->kota_id ?? null,

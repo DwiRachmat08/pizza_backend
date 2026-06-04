@@ -19,7 +19,7 @@ class Produk extends Model
         'margin',
         'harga',
         'gambar',
-        'is_available'
+        'aktif'
     ];
 
     public function kategori()

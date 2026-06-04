@@ -90,7 +90,17 @@ class UserController extends Controller
         try {
             DB::transaction(function () use ($user, $request) {
                 $userLama = $user;
-                $user->update($request->all());
+
+                $dataUpdate = $request->all();
+                if ($request->has('aktif')) {
+                    $dataUpdate['aktif'] = $request->boolean('aktif');
+                }
+
+                if ($request->has('status_lapak')) {
+                    $dataUpdate['status_lapak'] = $request->boolean('status_lapak');
+                }
+
+                $user->update($dataUpdate);
                 UserLog::simpan("Mengubah User {$user->nama}", ["semula" => $userLama, "menjadi" => $user]);
             });
 

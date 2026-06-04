@@ -24,7 +24,7 @@ return new class extends Migration
             $table->decimal('harga', 12, 2);
             $table->text('gambar')->nullable();
 
-            $table->boolean('is_available')->default(true);
+            $table->boolean('aktif')->default(true);
             $table->timestamps();
         });
     }

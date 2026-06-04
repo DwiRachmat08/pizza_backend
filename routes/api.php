@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AsetController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\KategoriAsetController;
 use App\Http\Controllers\Api\KategoriController;
 use App\Http\Controllers\Api\LokasiSellerController;
@@ -26,6 +27,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // get user by token aktif
     Route::get('/user', function (Request $request) {
         return $request->user();
+    });
+
+    // PEMBELI
+    Route::middleware('role:pembeli')->group(function () {
+        // Keranjang
+        Route::get('/keranjang/getKeranjangPembeli', [CartController::class, 'getCartPembeli']);
+        Route::post('/keranjang/simpanKeranjang', [CartController::class, 'store']);
+        Route::put('/keranjang/simpanKeranjang/{id}', [CartController::class, 'update']);
+        Route::delete('/keranjang/hapusKeranjang/{id}', [CartController::class, 'destroy']);
     });
 
     // ADMIN ONLY

@@ -9,11 +9,11 @@ use App\Models\Aset;
 
 class Stok extends Model
 {
-    protected $fillable = ['gerobak_id', 'seller_id', 'tanggal'];
+    protected $fillable = ['gerobak_id', 'penjual_id', 'tanggal'];
 
     public function users()
     {
-        return $this->belongsTo(User::class, 'seller_id');
+        return $this->belongsTo(User::class, 'penjual_id');
     }
 
     public function gerobak()
