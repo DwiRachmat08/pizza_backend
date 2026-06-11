@@ -16,7 +16,7 @@ class KategoriAsetSeeder extends Seeder
         $asets = ['Bahan Baku', 'Aset Fisik', 'Gerobak'];
         foreach ($asets as $aset) {
             $slug_aset = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '_', $aset)));
-            KategoriAset::firstOrCreate(['nama' => $aset, 'slug' => $slug_aset]);
+            KategoriAset::create(['nama' => $aset, 'slug' => $slug_aset]);
         }
     }
 }

@@ -20,6 +20,8 @@ return new class extends Migration
             $table->integer('kecamatan_id')->nullable();
             $table->integer('kelurahan_id')->nullable();
             $table->date('tanggal');
+            $table->decimal('lat_penjual', 10, 8)->nullable();
+            $table->decimal('long_penjual', 11, 8)->nullable();
             $table->timestamps();
         });
     }

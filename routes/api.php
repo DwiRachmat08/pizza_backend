@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\KategoriAsetController;
 use App\Http\Controllers\Api\KategoriController;
 use App\Http\Controllers\Api\LokasiSellerController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProdukController;
 use App\Http\Controllers\Api\ResepController;
 use App\Http\Controllers\Api\SatuanController;
@@ -19,6 +20,9 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::get('/produks', [ProdukController::class, 'index']);
 Route::get('/produks/{id}', [ProdukController::class, 'show']);
 Route::get('/stoks', [StokController::class, 'index']);
+Route::get('/lokasiPenjual/getPenjualByLatLong', [LokasiSellerController::class, 'getPenjualByLatLong']);
+
+Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
 
 // Route terproteksi token harus login dulu
 Route::middleware('auth:sanctum')->group(function () {
@@ -29,6 +33,12 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    // PENJUAL
+    Route::middleware('role:penjual')->group(function () {
+        // lokasi
+        Route::post('/lokasiPenjual/updateLokasiPenjual', [LokasiSellerController::class, 'updateLokasiPenjual']);
+    });
+
     // PEMBELI
     Route::middleware('role:pembeli')->group(function () {
         // Keranjang
@@ -36,6 +46,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/keranjang/simpanKeranjang', [CartController::class, 'store']);
         Route::put('/keranjang/simpanKeranjang/{id}', [CartController::class, 'update']);
         Route::delete('/keranjang/hapusKeranjang/{id}', [CartController::class, 'destroy']);
+
+        // lokasi
+        Route::get('/lokasiPenjual/getPenjualByLokasiId/{id}', [LokasiSellerController::class, 'getPenjualByLokasiId']);
+
+        // produk
+        Route::get('/stoks/getProdukByPenjual/{id}', [StokController::class, 'getProdukByPenjual']);
+
+        // order
+        // Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
     });
 
     // ADMIN ONLY
@@ -73,11 +92,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/resep/hapusResep/{id}', [ResepController::class, 'destroy']);
 
         // lokasi seller
-        Route::get('/lokasiSeller', [LokasiSellerController::class, 'index']);
-        Route::get('/lokasiSeller/getSellerByLokasiId/{id}', [LokasiSellerController::class, 'getSellerByLokasiId']);
-        Route::get('/lokasiSeller/show/{id}', [LokasiSellerController::class, 'show']);
-        Route::put('/lokasiSeller/updateLokasiSeller/{id}', [LokasiSellerController::class, 'update']);
-        Route::delete('/lokasiSeller/delete/{id}', [LokasiSellerController::class, 'destroy']);
+        Route::get('/lokasiPenjual', [LokasiSellerController::class, 'index']);
+        Route::get('/lokasiPenjual/show/{id}', [LokasiSellerController::class, 'show']);
+        Route::put('/lokasiPenjual/update/{id}', [LokasiSellerController::class, 'update']);
+        Route::delete('/lokasiPenjual/delete/{id}', [LokasiSellerController::class, 'destroy']);
     });
 });
 

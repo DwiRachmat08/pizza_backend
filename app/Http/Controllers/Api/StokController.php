@@ -171,4 +171,18 @@ class StokController extends Controller
             ], 500);
         }
     }
+
+    public function getProdukByPenjual($id)
+    {
+        $stoks = Stok::withRealTimeStock($id)
+            ->where('penjual_id', $id)
+            ->whereDate('tanggal', date('Y-m-d'))
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Daftar Data Stok',
+            'data'    => $stoks
+        ], 200);
+    }
 }

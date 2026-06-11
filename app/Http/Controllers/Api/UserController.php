@@ -44,7 +44,7 @@ class UserController extends Controller
 
         try {
             DB::transaction(function () use ($request) {
-                $user = User::craete($request->all());
+                $user = User::create($request->all());
                 UserLog::simpan("Menambahkan User baru {$user->nama}", $user);
             });
 

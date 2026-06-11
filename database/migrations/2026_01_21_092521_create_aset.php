@@ -24,6 +24,7 @@ return new class extends Migration
             $table->decimal('harga_ecer', 12, 2);
             $table->text('keterangan')->nullable();
             $table->boolean('aktif')->default(true);
+            $table->text('kode_gerobak')->nullable();
             $table->timestamps();
         });
     }
