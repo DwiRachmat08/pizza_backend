@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\KategoriAsetController;
 use App\Http\Controllers\Api\KategoriController;
+use App\Http\Controllers\Api\KonfigurasiController;
 use App\Http\Controllers\Api\LokasiSellerController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProdukController;
@@ -22,7 +23,8 @@ Route::get('/produks/{id}', [ProdukController::class, 'show']);
 Route::get('/stoks', [StokController::class, 'index']);
 Route::get('/lokasiPenjual/getPenjualByLatLong', [LokasiSellerController::class, 'getPenjualByLatLong']);
 
-Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
+// konfigurasi
+Route::get('/konfigurasi', [KonfigurasiController::class, 'index']);
 
 // Route terproteksi token harus login dulu
 Route::middleware('auth:sanctum')->group(function () {
@@ -37,6 +39,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:penjual')->group(function () {
         // lokasi
         Route::post('/lokasiPenjual/updateLokasiPenjual', [LokasiSellerController::class, 'updateLokasiPenjual']);
+
+        // order
+        Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
+        Route::post('order/updatePesanan', [OrderController::class, 'update']);
     });
 
     // PEMBELI
@@ -54,7 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stoks/getProdukByPenjual/{id}', [StokController::class, 'getProdukByPenjual']);
 
         // order
-        // Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
+        Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
     });
 
     // ADMIN ONLY
@@ -96,6 +102,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/lokasiPenjual/show/{id}', [LokasiSellerController::class, 'show']);
         Route::put('/lokasiPenjual/update/{id}', [LokasiSellerController::class, 'update']);
         Route::delete('/lokasiPenjual/delete/{id}', [LokasiSellerController::class, 'destroy']);
+
+        // konfigurasi
+        Route::post('/konfigurasi/simpan', [KonfigurasiController::class, 'store']);
+        Route::put('/konfigurasi/update/{id}', [KonfigurasiController::class, 'update']);
     });
 });
 
