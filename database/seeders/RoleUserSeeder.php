@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Aset;
 use App\Models\Kategori;
 use App\Models\KategoriAset;
+use App\Models\Konfigurasi;
 use App\Models\Pembelian;
 use App\Models\Produk;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -139,5 +140,10 @@ class RoleUserSeeder extends Seeder
                 // ]);
             }
         }
+
+        Konfigurasi::create([
+            'nama_app' => 'Panggil Papa Pizza',
+            'logo_app' => ''
+        ]);
     }
 }

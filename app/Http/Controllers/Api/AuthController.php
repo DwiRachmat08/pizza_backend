@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\UserLog;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -50,6 +51,7 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
+        UserLog::simpan("Login ke sistem");
 
         return response()->json([
             'message'      => 'Login sukses!',
@@ -60,6 +62,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        UserLog::simpan("Logout dari sistem");
         $request->user()->currentAccessToken()->delete();
         return response()->json(['success' => true, 'message' => 'Berhasil logout']);
     }
