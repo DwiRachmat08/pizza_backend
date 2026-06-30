@@ -2,7 +2,7 @@
 
 Reference for integrating this Laravel + Sanctum API with a Vue.js (or other) frontend.
 
-> Last updated from repo commits through `c0a8616` (order checkout, `lokasiPenjual` GPS lookup, penjual location update, pembeli stock-by-seller, route path renames).
+> Last updated from repo commits through `2d8baf6` (konfigurasi, auth-gated checkout, penjual order update, rating routes, `simpanBatch` `qty` field).
 
 ---
 
@@ -32,11 +32,11 @@ Protected routes use role middleware. Wrong role receives **403**:
 
 | Middleware | Routes |
 |------------|--------|
-| `role:admin` | User management, produk/stok/satuan/aset/kategori/resep, admin `lokasiPenjual` CRUD |
-| `role:penjual` | `POST /lokasiPenjual/updateLokasiPenjual` — update GPS for today's stall |
-| `role:pembeli` | Keranjang (cart), `GET /lokasiPenjual/getPenjualByLokasiId/{id}`, `GET /stoks/getProdukByPenjual/{id}` |
+| `role:admin` | User management, produk/stok/satuan/aset/kategori/resep, admin `lokasiPenjual` CRUD, `POST/PUT /konfigurasi/*` |
+| `role:penjual` | `POST /lokasiPenjual/updateLokasiPenjual`, `POST /order/checkoutPesanan`, `POST /order/updatePesanan` |
+| `role:pembeli` | Keranjang (cart), `GET /lokasiPenjual/getPenjualByLokasiId/{id}`, `GET /stoks/getProdukByPenjual/{id}`, `POST /order/checkoutPesanan`, `POST /ratingPenjual/simpan`, `POST /ratingProduk/simpan` |
 | Any authenticated user | `/logout`, `/user` |
-| Public (no token) | `/register`, `/login`, `/produks`, `/stoks`, `/lokasiPenjual/getPenjualByLatLong`, `POST /order/checkoutPesanan` |
+| Public (no token) | `/register`, `/login`, `/produks`, `/stoks`, `/lokasiPenjual/getPenjualByLatLong`, `GET /konfigurasi` |
 
 ---
 
@@ -51,7 +51,7 @@ flowchart LR
         D[GET /produks/id]
         E[GET /stoks]
         R[GET /lokasiPenjual/getPenjualByLatLong]
-        S[POST /order/checkoutPesanan]
+        W[GET /konfigurasi]
     end
     subgraph auth [Auth required]
         F[POST /logout]
@@ -59,11 +59,15 @@ flowchart LR
     end
     subgraph penjual [Penjual only]
         T[POST /lokasiPenjual/updateLokasiPenjual]
+        X[POST /order/checkoutPesanan]
+        Y[POST /order/updatePesanan]
     end
     subgraph pembeli [Pembeli only]
         Q[keranjang GET POST PUT DELETE]
         U[getPenjualByLokasiId]
         V[getProdukByPenjual]
+        S[POST /order/checkoutPesanan]
+        Z[ratingPenjual ratingProduk simpan]
     end
     subgraph admin [Admin only]
         H[produks POST PUT]
@@ -75,6 +79,7 @@ flowchart LR
         N[resep endpoints]
         O[lokasiPenjual CRUD]
         P[user penjual GET POST PUT]
+        K2[konfigurasi POST PUT]
     end
     public --> auth
     auth --> penjual
@@ -322,7 +327,40 @@ flowchart LR
 | perubahan | json | nullable — before/after detail |
 | created_at, updated_at | datetime | |
 
-Written automatically by admin/pembeli/penjual mutations (produk, stok, aset, resep, kategori, satuan, user, lokasi penjual, keranjang, order checkout).
+Written automatically by admin/pembeli/penjual mutations (produk, stok, aset, resep, kategori, satuan, user, lokasi penjual, keranjang, order checkout, konfigurasi).
+
+### `konfigurasi` (app settings)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | bigint | PK |
+| nama_app | text | app name — unique |
+| logo_app | text | nullable — logo URL/path |
+| created_at, updated_at | datetime | |
+
+> Typically a single-row config. `POST /konfigurasi/simpan` rejects if more than one row already exists.
+
+### `rating_penjual` (seller ratings)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | bigint | PK |
+| pembeli_id | bigint | FK → users (pembeli) |
+| penjual_id | bigint | FK → users (penjual) |
+| rating | integer | score |
+| pesan | text | review message |
+| created_at, updated_at | datetime | |
+
+### `rating_produk` (product ratings)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | bigint | PK |
+| pembeli_id | bigint | FK → users (pembeli) |
+| produk_id | bigint | FK → produks |
+| rating | integer | score |
+| pesan | text | review message |
+| created_at, updated_at | datetime | |
 
 ---
 
@@ -691,8 +729,8 @@ Creates one `stoks` header, multiple `stok_detail` lines, and multiple `lokasi_s
     }
   ],
   "produk": [
-    { "produk_id": 1, "stok": 25 },
-    { "produk_id": 2, "stok": 15 }
+    { "produk_id": 1, "qty": 25 },
+    { "produk_id": 2, "qty": 15 }
   ]
 }
 ```
@@ -709,7 +747,7 @@ Creates one `stoks` header, multiple `stok_detail` lines, and multiple `lokasi_s
 | lokasi.*.kelurahan_id | optional integer |
 | produk | required array, min 1 item |
 | produk.*.produk_id | required, exists in `produks` |
-| produk.*.stok | required, numeric |
+| produk.*.qty | required, numeric |
 
 Each `lokasi` row is saved to `lokasi_seller` with the same `gerobak_id`, `penjual_id`, and `tanggal` as the stock header.
 
@@ -1156,11 +1194,11 @@ Delete a seller location.
 
 ---
 
-### Orders (`order`) — Public checkout
+### Orders (`order`)
 
-#### `POST /api/order/checkoutPesanan` — Public
+#### `POST /api/order/checkoutPesanan` — Pembeli or Penjual (auth required)
 
-Create an order with line items. Validates remaining stock per product (`StokDetail::sisaStokLock`) inside a DB transaction. Auto-generates `kode_pesanan` and `no_antrian`.
+Create an order with line items. Requires Bearer token and `role:pembeli` **or** `role:penjual`. Validates remaining stock per product (`StokDetail::sisaStokLock`) inside a DB transaction. Auto-generates `kode_pesanan` and `no_antrian`.
 
 **Body:**
 
@@ -1242,7 +1280,125 @@ Order totals: `subtotal` = sum of line `total`; `diskon` = sum of line `diskon`;
 
 **Response 422 / 500** on validation failure / transaction error.
 
-> `OrderController::update` exists in code but is **not registered** in `routes/api.php` yet.
+---
+
+#### `POST /api/order/updatePesanan` — Penjual only
+
+Update an existing order. Accepts any `order` fields in body (`status_pembayaran`, `status_penjual`, `status_order`, etc.).
+
+> **Known gap:** route is registered as `POST /order/updatePesanan` (no `{id}` in path) but `OrderController::update` expects an order `id` route parameter — align route to `POST /order/updatePesanan/{id}` or pass `id` in the request body before relying on this in production.
+
+**Response 200:**
+
+```json
+{ "success": true, "message": "Data Pesanan berhasil diupdate", "data": { /* order */ } }
+```
+
+**Response 404 / 500** on not found / server error.
+
+---
+
+### Configuration (`konfigurasi`)
+
+#### `GET /api/konfigurasi` — Public
+
+List all configuration rows (typically one row).
+
+**Response 200:**
+
+```json
+{
+  "success": true,
+  "message": "Data Konfigurasi",
+  "data": [
+    { "id": 1, "nama_app": "Pizza App", "logo_app": null, "created_at": "...", "updated_at": "..." }
+  ]
+}
+```
+
+---
+
+#### `POST /api/konfigurasi/simpan` — Admin only
+
+Create app configuration. Only allowed when fewer than 2 rows exist (effectively one-time setup).
+
+**Body:**
+
+```json
+{
+  "nama_app": "Pizza App",
+  "logo_app": "https://example.com/logo.png"
+}
+```
+
+| Field | Rules |
+|-------|-------|
+| nama_app | required, string, unique in `konfigurasi` |
+| logo_app | optional string |
+
+**Response 201:**
+
+```json
+{ "success": true, "message": "Data Konfigurasi berhasil ditambahkan" }
+```
+
+**Response 201 (already exists):**
+
+```json
+{ "success": false, "message": "Data Konfigurasi sudah ada" }
+```
+
+---
+
+#### `PUT /api/konfigurasi/update/{id}` — Admin only
+
+Update configuration by `id`. Accepts any `konfigurasi` fields (`nama_app`, `logo_app`).
+
+**Response 200:**
+
+```json
+{ "success": true, "message": "Data Konfigurasi berhasil diupdate" }
+```
+
+**Response 404 / 500** on not found / server error.
+
+---
+
+### Ratings — Pembeli only (stub)
+
+Routes are registered but controllers are **not yet implemented**.
+
+#### `POST /api/ratingPenjual/simpan` — Pembeli only
+
+> `RatingPenjualController::store` is empty — no persistence yet.
+
+**Expected body (from migration):**
+
+```json
+{
+  "penjual_id": 2,
+  "rating": 5,
+  "pesan": "Pelayanan ramah"
+}
+```
+
+`pembeli_id` should be set server-side from `Auth::id()` when implemented.
+
+---
+
+#### `POST /api/ratingProduk/simpan` — Pembeli only
+
+> `RatingProdukController::store` is not implemented — calling this route will error until the controller is added.
+
+**Expected body (from migration):**
+
+```json
+{
+  "produk_id": 1,
+  "rating": 4,
+  "pesan": "Rasanya enak"
+}
+```
 
 ---
 
@@ -1379,7 +1535,13 @@ Remove one cart line.
 | GET | `/lokasiPenjual/show/{id}` | Admin | Location detail |
 | PUT | `/lokasiPenjual/update/{id}` | Admin | Update location |
 | DELETE | `/lokasiPenjual/delete/{id}` | Admin | Delete location |
-| POST | `/order/checkoutPesanan` | Public | Checkout / create order |
+| POST | `/order/checkoutPesanan` | Pembeli / Penjual | Checkout / create order (auth required) |
+| POST | `/order/updatePesanan` | Penjual | Update order status/fields |
+| GET | `/konfigurasi` | Public | App configuration |
+| POST | `/konfigurasi/simpan` | Admin | Create configuration |
+| PUT | `/konfigurasi/update/{id}` | Admin | Update configuration |
+| POST | `/ratingPenjual/simpan` | Pembeli | Rate seller (stub) |
+| POST | `/ratingProduk/simpan` | Pembeli | Rate product (stub) |
 | GET | `/keranjang/getKeranjangPembeli` | Pembeli | List my cart |
 | POST | `/keranjang/simpanKeranjang` | Pembeli | Add/update cart line |
 | PUT | `/keranjang/simpanKeranjang/{id}` | Pembeli | Update cart line |
@@ -1417,12 +1579,15 @@ localStorage.setItem('role_id', data.role)
 // Public menu
 const produks = await api.get('/produks')
 
+// Public — app config
+const konfigurasi = await api.get('/konfigurasi')
+
 // Public — find sellers near buyer GPS
 const penjual = await api.get('/lokasiPenjual/getPenjualByLatLong', {
   params: { lat: -7.983908, long: 112.621391 },
 })
 
-// Public — checkout (no auth required)
+// Pembeli — checkout (login as pembeli@pizza.com first)
 await api.post('/order/checkoutPesanan', {
   gerobak_id: 1,
   penjual_id: 2,
@@ -1468,10 +1633,14 @@ await api.post('/stoks/simpanBatch', {
     },
   ],
   produk: [
-    { produk_id: 1, stok: 25 },
-    { produk_id: 2, stok: 15 },
+    { produk_id: 1, qty: 25 },
+    { produk_id: 2, qty: 15 },
   ],
 })
+
+// Admin — app config
+await api.post('/konfigurasi/simpan', { nama_app: 'Pizza App' })
+await api.put('/konfigurasi/update/1', { logo_app: 'https://example.com/logo.png' })
 
 // Admin — create user
 await api.post('/user', {
@@ -1523,6 +1692,9 @@ erDiagram
     kategori_aset ||--o{ aset : categorizes
     aset ||--o{ pembelian : purchased
     satuan ||--o{ pembelian : unit
+    users ||--o{ rating_penjual : rates_seller
+    users ||--o{ rating_produk : rates_as_pembeli
+    produks ||--o{ rating_produk : rated
     users ||--o{ user_log : audits
 ```
 
@@ -1535,22 +1707,26 @@ erDiagram
 3. **Route prefix for seller locations is `/lokasiPenjual`**, not `lokasiSeller`.
 4. **Stock is two-level:** `stoks` (header: gerobak + `penjual_id` + date) + `stok_detail` (produk + **`qty`**). Use **`POST /stoks/simpanBatch`** — also creates **`lokasi_seller`** from the `lokasi` array.
 5. **`GET /stoks/getProdukByPenjual/{id}`** (pembeli) returns `detail[].qty_terjual` for real-time availability.
-6. **`POST /order/checkoutPesanan` is public** — validates stock and creates `order` + `order_detail` rows; auto-generates `kode_pesanan`.
+6. **`POST /order/checkoutPesanan` requires auth** — available to `role:pembeli` and `role:penjual`; validates stock and creates `order` + `order_detail` rows.
 7. **`GET /lokasiPenjual/getPenjualByLatLong` is public** — resolves kecamatan from lat/long, returns sellers for today.
 8. **Penjual updates GPS** via `POST /lokasiPenjual/updateLokasiPenjual` with `lat` / `long` (maps to `lat_penjual` / `long_penjual` on today's row).
-9. **`seller_id` renamed to `penjual_id`** on `stoks`, `lokasi_seller`, `cart`, and `order`. Stok JSON still exposes penjual as **`users`** (relation name).
-10. **`GET /produks` returns `stok_detail`** (today's stock only); each line uses field **`qty`**.
-11. **Cart (`/keranjang/*`)** — pembeli only; response loads `gerobak`, `penjual`, `produk` (not `pembeli`).
-12. **Gerobak is an `aset`** with `kategori_aset` slug `gerobak` — `GET /getAsetByKategoriAset/{id}`; has auto `kode_gerobak`.
-13. **Penjual users** get auto `kode_penjual` used in order codes (`PPP...`).
-14. **Admin user management** — `POST /user`, `PUT /user/{id}`; users have `notelp`, `aktif`, `status_lapak`.
-15. **Products** — optional `gambar`; use **`aktif`** (not `is_available`).
-16. **Menu / asset categories** — CRUD at `/kategoriMenu` and `/kategoriAset`.
-17. **Resep update** — `PUT /resep/updateResep/{id}`.
-18. **Many POST responses** return only `{ success, message }` without `data`.
-19. **Decimal values** come back as strings — parse with `Number()` or `parseFloat()`.
-20. **CORS** — configure for your Vue dev origin (e.g. `http://localhost:5173`).
-21. **Known backend gaps:** `GET /produks/{id}` still loads removed `stok` relation; `POST /stoks` flat body is legacy; prefer `simpanBatch`; `OrderController::update` not routed.
+9. **Penjual can update orders** via `POST /order/updatePesanan` (route/controller `id` mismatch — see Orders section).
+10. **`GET /konfigurasi` is public** — app name/logo; admin manages via `POST /konfigurasi/simpan` and `PUT /konfigurasi/update/{id}`.
+11. **Rating endpoints** (`/ratingPenjual/simpan`, `/ratingProduk/simpan`) are routed for pembeli but controllers are stubs.
+12. **`seller_id` renamed to `penjual_id`** on `stoks`, `lokasi_seller`, `cart`, and `order`. Stok JSON still exposes penjual as **`users`** (relation name).
+13. **`GET /produks` returns `stok_detail`** (today's stock only); each line uses field **`qty`**.
+14. **Cart (`/keranjang/*`)** — pembeli only; response loads `gerobak`, `penjual`, `produk` (not `pembeli`).
+15. **Gerobak is an `aset`** with `kategori_aset` slug `gerobak` — `GET /getAsetByKategoriAset/{id}`; has auto `kode_gerobak`.
+16. **Penjual users** get auto `kode_penjual` used in order codes (`PPP...`).
+17. **Admin user management** — `POST /user`, `PUT /user/{id}`; users have `notelp`, `aktif`, `status_lapak`.
+18. **Products** — optional `gambar`; use **`aktif`** (not `is_available`).
+19. **Menu / asset categories** — CRUD at `/kategoriMenu` and `/kategoriAset`.
+20. **Resep update** — `PUT /resep/updateResep/{id}`.
+21. **`POST /stoks/simpanBatch`** — `produk` array uses **`qty`** (not `stok`).
+22. **Many POST responses** return only `{ success, message }` without `data`.
+23. **Decimal values** come back as strings — parse with `Number()` or `parseFloat()`.
+24. **CORS** — configure for your Vue dev origin (e.g. `http://localhost:5173`).
+25. **Known backend gaps:** `GET /produks/{id}` still loads removed `stok` relation; `POST /stoks` flat body is legacy; prefer `simpanBatch`; `POST /order/updatePesanan` missing `{id}` in route; rating controllers not implemented.
 
 ---
 
@@ -1569,4 +1745,4 @@ erDiagram
 
 TypeScript interfaces and Pinia stores are available in [`frontend-scaffold/`](frontend-scaffold/README.md). Copy `frontend-scaffold/src/` into your Vue 3 project.
 
-> The scaffold may predate these updates — align with `penjual_id`, cart/keranjang endpoints, order checkout, `lokasiPenjual` paths, `stok_detail.qty`, `qty_terjual`, `status_lapak`, and produk `aktif` when copying.
+> The scaffold may predate these updates — align with `penjual_id`, cart/keranjang endpoints, auth-gated order checkout, `lokasiPenjual` paths, `stok_detail.qty`, `simpanBatch` `qty`, `qty_terjual`, `status_lapak`, produk `aktif`, `konfigurasi`, and rating stubs when copying.
