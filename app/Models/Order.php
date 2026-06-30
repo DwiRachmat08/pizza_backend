@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    protected $table = 'order';
+    // protected $table = 'order';
     protected $fillable = ['gerobak_id', 'penjual_id', 'pembeli_id', 'kode_pesanan', 'no_antrian', 'metode_pembayaran', 'tipe_pembayaran', 'status_pembayaran', 'status_penjual', 'status_order', 'lat_pembeli', 'long_pembeli', 'alamat_pembeli', 'note_pembeli', 'total', 'diskon', 'subtotal', 'token_midtrans'];
 
     protected static function booted()

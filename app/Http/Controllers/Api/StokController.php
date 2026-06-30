@@ -63,7 +63,7 @@ class StokController extends Controller
             'lokasi'                    => 'required|array|min:1',
             'produk'                    => 'required|array|min:1',
             'produk.*.produk_id'        => 'required|exists:produks,id',
-            'produk.*.stok'             => 'required|numeric',
+            'produk.*.qty'             => 'required|numeric',
         ], [
             'gerobak_id.required'        => 'Gerobak tidak boleh kosong.',
             'gerobak_id.exists'          => 'Gerobak yang dipilih tidak valid.',
@@ -72,7 +72,7 @@ class StokController extends Controller
             'lokasi.required'            => 'Lokasi Seller tidak boleh kosong.',
             'produk.required'            => 'Daftar Produk tidak boleh kosong.',
             'produk.*.produk_id.exists'  => 'Produk yang dipilih tidak valid.',
-            'produk.*.stok.exists'       => 'Jumlah stok tidak valid.'
+            'produk.*.qty.numeric'       => 'Jumlah stok tidak valid.'
         ]);
 
         if ($validator->fails()) {
@@ -96,11 +96,13 @@ class StokController extends Controller
                 ]);
 
                 $insertBatch = [];
-                foreach ($request->produk as $p) {
+                // $produkCollect = collect($request->produk)->map(fn($item) => $item);
+                foreach ($request->produk as $val) {
+                    $p = (object)$val;
                     $insertBatch[] = [
                         'stok_id'   => $simpanStok->id,
                         'produk_id' => $p->produk_id,
-                        'stok'      => $p->stok,
+                        'qty'      => $p->qty,
                         'created_at'    => $waktuSekarang,
                         'updated_at'    => $waktuSekarang
                     ];
@@ -109,7 +111,8 @@ class StokController extends Controller
                 StokDetail::insert($insertBatch);
 
                 $simpanLokasiSellerBatch = [];
-                foreach ($request->lokasi as $l) {
+                foreach ($request->lokasi as $val) {
+                    $l = (object)$val;
                     $simpanLokasiSellerBatch[] = [
                         'gerobak_id'        => $request->gerobak_id,
                         'penjual_id'         => $request->penjual_id,
@@ -135,7 +138,7 @@ class StokController extends Controller
             return response()->json([
                 'success'  => false,
                 'message' => 'Gagal menyimpan stok. Transaksi dibatalkan.',
-                'error'   => $th->getMessage()
+                'error'   => $th->getMessage() . " line: " . $th->getLine()
             ], 500);
         }
     }

@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\KonfigurasiController;
 use App\Http\Controllers\Api\LokasiSellerController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProdukController;
+use App\Http\Controllers\Api\RatingPenjualController;
+use App\Http\Controllers\Api\RatingProdukController;
 use App\Http\Controllers\Api\ResepController;
 use App\Http\Controllers\Api\SatuanController;
 use App\Http\Controllers\Api\StokController;
@@ -41,14 +43,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/lokasiPenjual/updateLokasiPenjual', [LokasiSellerController::class, 'updateLokasiPenjual']);
 
         // order
-        Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
-        Route::post('order/updatePesanan', [OrderController::class, 'update']);
+        Route::post('/order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
+        Route::post('/order/updatePesanan', [OrderController::class, 'update']);
     });
 
     // PEMBELI
     Route::middleware('role:pembeli')->group(function () {
         // Keranjang
-        Route::get('/keranjang/getKeranjangPembeli', [CartController::class, 'getCartPembeli']);
+        Route::get('/keranjang/getKeranjangPembeli', [CartController::class, 'getKeranjangPembeli']);
         Route::post('/keranjang/simpanKeranjang', [CartController::class, 'store']);
         Route::put('/keranjang/simpanKeranjang/{id}', [CartController::class, 'update']);
         Route::delete('/keranjang/hapusKeranjang/{id}', [CartController::class, 'destroy']);
@@ -60,7 +62,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/stoks/getProdukByPenjual/{id}', [StokController::class, 'getProdukByPenjual']);
 
         // order
-        Route::post('order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
+        Route::post('/order/checkoutPesanan', [OrderController::class, 'checkoutPesanan']);
+
+        // rating penjual
+        Route::post('/ratingPenjual/simpan', [RatingPenjualController::class, 'store']);
+
+        // rating produk
+        Route::post('/ratingProduk/simpan', [RatingProdukController::class, 'store']);
     });
 
     // ADMIN ONLY
