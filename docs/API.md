@@ -2,7 +2,7 @@
 
 Reference for integrating this Laravel + Sanctum API with a Vue.js (or other) frontend.
 
-> Last updated from repo commits through `2d8baf6` (konfigurasi, auth-gated checkout, penjual order update, rating routes, `simpanBatch` `qty` field).
+> Last updated from repo commits through `a817b1e` (checkout `$$saveOrder` fix; doc sync with implementation details).
 
 ---
 
@@ -260,7 +260,9 @@ flowchart LR
 
 **Relations in JSON:** `users` (penjual), `gerobak` (aset)
 
-### `order` (checkout / pesanan header)
+### `orders` (checkout / pesanan header)
+
+> Laravel model: `Order`. Database table name is **`orders`** (not `order`).
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -292,7 +294,7 @@ flowchart LR
 | Field | Type | Notes |
 |-------|------|-------|
 | id | bigint | PK |
-| order_id | bigint | FK → order |
+| order_id | bigint | FK → orders |
 | produk_id | bigint | FK → produks |
 | harga | decimal(12,2) | unit price at checkout |
 | qty | integer | quantity ordered |
@@ -599,6 +601,16 @@ Product detail with `kategori`. Controller still calls `stok` relation which is 
 }
 ```
 
+| Field | Rules |
+|-------|-------|
+| kategori_id | required, integer |
+| nama_produk | required, string, max 255 |
+| slug | required, string, max 255 |
+| taste_note, deskripsi | optional string |
+| hpp, margin | required, **integer** |
+| harga | required, numeric |
+| gambar | optional string |
+
 **Response 201:**
 
 ```json
@@ -868,7 +880,7 @@ Examples: `GET /api/satuan`, `GET /api/satuan?aktif=1`, `GET /api/satuan?aktif=0
 |--------|----------|-------------|
 | GET | `/api/aset` | List active assets with `satuan`, `satuan_ecer` |
 | POST | `/api/aset` | Create or add qty + purchase record |
-| GET | `/api/aset/{id}` | Detail with `satuan` |
+| GET | `/api/aset/{id}` | Detail with `satuan` — `data` is an **array** (controller uses `->get()`) |
 | PUT/PATCH | `/api/aset/{id}` | Update |
 | GET | `/api/getAsetByKategoriAset/{id}` | Assets filtered by `kategori_aset_id` |
 | DELETE | `/api/aset/{id}` | Not implemented in controller |
@@ -1076,6 +1088,8 @@ Uses external APIs (maps.co geocoding + Emsifa wilayah Indonesia) to resolve `ke
 
 Filter by wilayah ID — matches any of `provinsi_id`, `kota_id`, `kecamatan_id`, or `kelurahan_id`.
 
+> Unlike `getPenjualByLatLong` and admin `GET /lokasiPenjual`, this endpoint does **not** filter `tanggal = today` — it returns all matching `lokasi_seller` rows for that wilayah ID across any date.
+
 **Response 200:**
 
 ```json
@@ -1194,11 +1208,15 @@ Delete a seller location.
 
 ---
 
-### Orders (`order`)
+### Orders (`orders`)
 
 #### `POST /api/order/checkoutPesanan` — Pembeli or Penjual (auth required)
 
 Create an order with line items. Requires Bearer token and `role:pembeli` **or** `role:penjual`. Validates remaining stock per product (`StokDetail::sisaStokLock`) inside a DB transaction. Auto-generates `kode_pesanan` and `no_antrian`.
+
+**Stock validation rules (`sisaStokLock`):** counts only orders with `status_pembayaran = 'Pembayaran Berhasil'` and `status_order` in `Pending` / `Selesai` for today. This differs from `GET /stoks/getProdukByPenjual/{id}`, where `qty_terjual` also includes unpaid `Pending` orders from the **last 15 minutes**. Checkout does not reserve those short-lived unpaid holds — `qty - qty_terjual` shown to pembeli may be lower than what checkout still allows.
+
+> **Known gap:** `sisaStokLock` raw-joins table `order`, but the actual table is `orders` — stock validation may **500** until the join is fixed.
 
 **Body:**
 
@@ -1274,7 +1292,7 @@ Order totals: `subtotal` = sum of line `total`; `diskon` = sum of line `diskon`;
 {
   "success": false,
   "message": "Produk Pizza Paket Sendirian A telah habis.",
-  "data": null
+  "data": []
 }
 ```
 
@@ -1370,7 +1388,7 @@ Routes are registered but controllers are **not yet implemented**.
 
 #### `POST /api/ratingPenjual/simpan` — Pembeli only
 
-> `RatingPenjualController::store` is empty — no persistence yet.
+> `RatingPenjualController::store` exists but is **empty** — returns an empty **200** response with no persistence.
 
 **Expected body (from migration):**
 
@@ -1388,7 +1406,7 @@ Routes are registered but controllers are **not yet implemented**.
 
 #### `POST /api/ratingProduk/simpan` — Pembeli only
 
-> `RatingProdukController::store` is not implemented — calling this route will error until the controller is added.
+> `RatingProdukController` has **no `store` method** — calling this route returns **500** (`BadMethodCallException`) until implemented.
 
 **Expected body (from migration):**
 
@@ -1529,7 +1547,7 @@ Remove one cart line.
 | PUT | `/resep/updateResep/{id}` | Admin | Update recipe line |
 | DELETE | `/resep/hapusResep/{id}` | Admin | Delete recipe line |
 | GET | `/lokasiPenjual/getPenjualByLatLong` | Public | Sellers near GPS (today, by kecamatan) |
-| GET | `/lokasiPenjual/getPenjualByLokasiId/{id}` | Pembeli | Filter sellers by wilayah ID |
+| GET | `/lokasiPenjual/getPenjualByLokasiId/{id}` | Pembeli | Filter sellers by wilayah ID (all dates) |
 | POST | `/lokasiPenjual/updateLokasiPenjual` | Penjual | Update today's GPS |
 | GET | `/lokasiPenjual` | Admin | Today's seller locations |
 | GET | `/lokasiPenjual/show/{id}` | Admin | Location detail |
@@ -1678,13 +1696,13 @@ erDiagram
     users ||--o{ stoks : penjual
     users ||--o{ lokasi_seller : penjual_loc
     users ||--o{ cart : pembeli_or_penjual
-    users ||--o{ order : pembeli_or_penjual
+    users ||--o{ orders : pembeli_or_penjual
     aset ||--o{ lokasi_seller : gerobak
     aset ||--o{ cart : gerobak
-    aset ||--o{ order : gerobak
+    aset ||--o{ orders : gerobak
     produks ||--o{ cart : in_cart
     produks ||--o{ order_detail : ordered
-    order ||--o{ order_detail : contains
+    orders ||--o{ order_detail : contains
     aset ||--o{ resep : used_in
     satuan ||--o{ resep : measured_in
     satuan ||--o{ aset : bulk_unit
@@ -1707,26 +1725,29 @@ erDiagram
 3. **Route prefix for seller locations is `/lokasiPenjual`**, not `lokasiSeller`.
 4. **Stock is two-level:** `stoks` (header: gerobak + `penjual_id` + date) + `stok_detail` (produk + **`qty`**). Use **`POST /stoks/simpanBatch`** — also creates **`lokasi_seller`** from the `lokasi` array.
 5. **`GET /stoks/getProdukByPenjual/{id}`** (pembeli) returns `detail[].qty_terjual` for real-time availability.
-6. **`POST /order/checkoutPesanan` requires auth** — available to `role:pembeli` and `role:penjual`; validates stock and creates `order` + `order_detail` rows.
+6. **`POST /order/checkoutPesanan` requires auth** — available to `role:pembeli` and `role:penjual`; validates stock via `sisaStokLock` (paid orders only — see Orders section).
 7. **`GET /lokasiPenjual/getPenjualByLatLong` is public** — resolves kecamatan from lat/long, returns sellers for today.
 8. **Penjual updates GPS** via `POST /lokasiPenjual/updateLokasiPenjual` with `lat` / `long` (maps to `lat_penjual` / `long_penjual` on today's row).
 9. **Penjual can update orders** via `POST /order/updatePesanan` (route/controller `id` mismatch — see Orders section).
 10. **`GET /konfigurasi` is public** — app name/logo; admin manages via `POST /konfigurasi/simpan` and `PUT /konfigurasi/update/{id}`.
-11. **Rating endpoints** (`/ratingPenjual/simpan`, `/ratingProduk/simpan`) are routed for pembeli but controllers are stubs.
-12. **`seller_id` renamed to `penjual_id`** on `stoks`, `lokasi_seller`, `cart`, and `order`. Stok JSON still exposes penjual as **`users`** (relation name).
-13. **`GET /produks` returns `stok_detail`** (today's stock only); each line uses field **`qty`**.
-14. **Cart (`/keranjang/*`)** — pembeli only; response loads `gerobak`, `penjual`, `produk` (not `pembeli`).
-15. **Gerobak is an `aset`** with `kategori_aset` slug `gerobak` — `GET /getAsetByKategoriAset/{id}`; has auto `kode_gerobak`.
-16. **Penjual users** get auto `kode_penjual` used in order codes (`PPP...`).
-17. **Admin user management** — `POST /user`, `PUT /user/{id}`; users have `notelp`, `aktif`, `status_lapak`.
-18. **Products** — optional `gambar`; use **`aktif`** (not `is_available`).
-19. **Menu / asset categories** — CRUD at `/kategoriMenu` and `/kategoriAset`.
-20. **Resep update** — `PUT /resep/updateResep/{id}`.
-21. **`POST /stoks/simpanBatch`** — `produk` array uses **`qty`** (not `stok`).
-22. **Many POST responses** return only `{ success, message }` without `data`.
-23. **Decimal values** come back as strings — parse with `Number()` or `parseFloat()`.
-24. **CORS** — configure for your Vue dev origin (e.g. `http://localhost:5173`).
-25. **Known backend gaps:** `GET /produks/{id}` still loads removed `stok` relation; `POST /stoks` flat body is legacy; prefer `simpanBatch`; `POST /order/updatePesanan` missing `{id}` in route; rating controllers not implemented.
+11. **Rating endpoints** — `ratingPenjual/simpan` returns empty 200 (stub); `ratingProduk/simpan` 500s (no `store` method).
+12. **Order table is `orders`** — model `Order`; `sisaStokLock` still joins `order` (bug).
+13. **`GET /lokasiPenjual/getPenjualByLokasiId/{id}`** does not filter by today's date.
+14. **`seller_id` renamed to `penjual_id`** on `stoks`, `lokasi_seller`, `cart`, and `orders`. Stok JSON still exposes penjual as **`users`** (relation name).
+15. **`GET /produks` returns `stok_detail`** (today's stock only); each line uses field **`qty`**.
+16. **Cart (`/keranjang/*`)** — pembeli only; response loads `gerobak`, `penjual`, `produk` (not `pembeli`).
+17. **Gerobak is an `aset`** with `kategori_aset` slug `gerobak` — `GET /getAsetByKategoriAset/{id}`; has auto `kode_gerobak`.
+18. **Penjual users** get auto `kode_penjual` used in order codes (`PPP...`).
+19. **Admin user management** — `POST /user`, `PUT /user/{id}`; users have `notelp`, `aktif`, `status_lapak`.
+20. **Products** — optional `gambar`; use **`aktif`** (not `is_available`); POST requires `hpp`/`margin` as integers.
+21. **Menu / asset categories** — CRUD at `/kategoriMenu` and `/kategoriAset`.
+22. **Resep update** — `PUT /resep/updateResep/{id}`.
+23. **`POST /stoks/simpanBatch`** — `produk` array uses **`qty`** (not `stok`).
+24. **`GET /aset/{id}`** — `data` is an array, not a single object.
+25. **Many POST responses** return only `{ success, message }` without `data`.
+26. **Decimal values** come back as strings — parse with `Number()` or `parseFloat()`.
+27. **CORS** — configure for your Vue dev origin (e.g. `http://localhost:5173`).
+28. **Known backend gaps:** `GET /produks/{id}` still loads removed `stok` relation; `POST /stoks` flat body is legacy; prefer `simpanBatch`; `POST /order/updatePesanan` missing `{id}` in route; `sisaStokLock` joins wrong table name; `DELETE` on `satuan`/`kategoriMenu`/`kategoriAset` always blocked (truthy collection check bug); rating controllers not implemented.
 
 ---
 
