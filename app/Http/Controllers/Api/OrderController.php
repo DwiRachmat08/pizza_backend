@@ -46,7 +46,7 @@ class OrderController extends Controller
             $orderTransaction = DB::transaction(function () use ($request) {
 
                 // cek validasi produk
-                $$saveOrder = [];
+                $saveOrder = [];
                 $isSisaStokAman = true;
                 $pesanSisaStokAman = '';
                 foreach ($request['produk'] as $item) {
